@@ -19,6 +19,9 @@ class CalculatorViewModel : ViewModel() {
     private val _resultText = MutableLiveData("0")
     val resultText: LiveData<String> = _resultText
 
+    private val _angleModeText = MutableLiveData("RAD")
+    val angleModeText: LiveData<String> = _angleModeText
+
     private var isRadians = true // Default to radians (scientific standard)
     private var lastResult = "0"
     private var lastCalculation = "0"
@@ -41,8 +44,8 @@ class CalculatorViewModel : ViewModel() {
             "=" -> {
                 calculateFinalResult(); return
             }
-            "RAD", "DEG" -> {
-                toggleAngleMode(); calculateResult(); return
+            "RAD/DEG" -> {
+                toggleAngleMode(); return
             }
             "ANS" -> {
                 appendToEquation(lastResult); calculateResult(); return
@@ -69,8 +72,11 @@ class CalculatorViewModel : ViewModel() {
         }
     }
 
-    private fun toggleAngleMode() {
+    fun toggleAngleMode() {
         isRadians = !isRadians
+        _angleModeText.value = if (isRadians) "RAD" else "DEG"
+        // Recalculate current expression with new angle mode
+        calculateResult()
     }
 
     private fun handleFunctionButtons(btn: String) {
@@ -86,7 +92,7 @@ class CalculatorViewModel : ViewModel() {
             "√" -> "sqrt("
             "x!" -> { handleFactorial(); return }
             "1/x" -> { handleReciprocal(); return }
-            "x^y" -> "^"
+            "x^y" -> "^" // This will be inserted between numbers
             "π" -> Math.PI.toString()
             "e" -> Math.E.toString()
             "(" -> "("
@@ -205,11 +211,23 @@ class CalculatorViewModel : ViewModel() {
             .replace("÷", "/")
             .replace("×", "*")
             .replace("—", "-")
-            .replace("π", Math.PI.toString())
-            .replace("e", Math.E.toString())
+            .replace("π", "Math.PI")
+            .replace("e", "Math.E")
+
+        // Better exponentiation handling
         processed = processed.replace("^", "**")
+
+        // Handle cases like 2^3, 5^2, etc.
+        processed = processed.replace(Regex("(\\d+)\\*\\*(\\d+)")) { match ->
+            val base = match.groupValues[1]
+            val exponent = match.groupValues[2]
+            "Math.pow($base, $exponent)"
+        }
+
         processed = addImplicitMultiplication(processed)
         processed = handleAngleConversions(processed)
+
+        Log.d("Calculator", "Processed expression: $processed")
         return processed
     }
 
@@ -321,8 +339,17 @@ class CalculatorViewModel : ViewModel() {
                 } else Double.NaN
             }
         })
+        // Add power function
+        scriptable.put("pow", scriptable, object : org.mozilla.javascript.BaseFunction() {
+            override fun call(cx: Context?, scope: Scriptable?, thisObj: Scriptable?, args: Array<out Any>?): Any {
+                return if (args != null && args.size == 2) {
+                    val base = Context.toNumber(args[0])
+                    val exponent = Context.toNumber(args[1])
+                    Math.pow(base, exponent)
+                } else Double.NaN
+            }
+        })
     }
-
     private fun factorial(n: Long): Long {
         return if (n <= 1) 1 else n * factorial(n - 1)
     }

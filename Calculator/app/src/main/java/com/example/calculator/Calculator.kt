@@ -30,7 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// Updated button layout with better organization
+// Updated button layout with RAD/DEG button
 val scientificButtonList = listOf(
     "sin", "cos", "tan", "(", ")",
     "sin⁻¹", "cos⁻¹", "tan⁻¹", "log", "ln",
@@ -38,7 +38,7 @@ val scientificButtonList = listOf(
     "7", "8", "9", "DEL", "AC",
     "4", "5", "6", "×", "÷",
     "1", "2", "3", "+", "-",
-    "0", ".", "e", "ANS", "="
+    "0", ".", "e", "RAD/DEG", "="
 )
 
 @Composable
@@ -46,7 +46,7 @@ fun Calculator(modifier: Modifier = Modifier, viewModel: CalculatorViewModel) {
 
     val equationText = viewModel.equationText.observeAsState()
     val resultText = viewModel.resultText.observeAsState()
-    val angleMode = viewModel.getAngleMode()
+    val angleMode = viewModel.angleModeText.observeAsState()
 
     Box(
         modifier = modifier
@@ -75,7 +75,7 @@ fun Calculator(modifier: Modifier = Modifier, viewModel: CalculatorViewModel) {
                     )
                 )
                 Text(
-                    text = angleMode,
+                    text = angleMode.value ?: "RAD",
                     style = TextStyle(
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.primary,
@@ -165,7 +165,7 @@ fun Calculator(modifier: Modifier = Modifier, viewModel: CalculatorViewModel) {
 @Composable
 fun ScientificCalculatorButton(btn: String, onClick: () -> Unit) {
     val buttonColor = getScientificColor(btn)
-    val textColor = if (btn in listOf("AC", "DEL", "=", "RAD", "DEG")) {
+    val textColor = if (btn in listOf("AC", "DEL", "=", "RAD/DEG")) {
         Color.White
     } else {
         MaterialTheme.colorScheme.onSurface
@@ -195,12 +195,13 @@ fun ScientificCalculatorButton(btn: String, onClick: () -> Unit) {
                 text = btn,
                 style = TextStyle(
                     fontSize = when {
+                        btn == "RAD/DEG" -> 10.sp
                         btn.length <= 2 -> 16.sp
                         btn == "sin⁻¹" || btn == "cos⁻¹" || btn == "tan⁻¹" -> 10.sp
                         else -> 14.sp
                     },
                     color = textColor,
-                    fontWeight = if (btn in listOf("=", "AC", "DEL")) FontWeight.Bold else FontWeight.Medium,
+                    fontWeight = if (btn in listOf("=", "AC", "DEL", "RAD/DEG")) FontWeight.Bold else FontWeight.Medium,
                     textAlign = TextAlign.Center
                 )
             )
@@ -215,8 +216,8 @@ fun getScientificColor(btn: String): Color {
         btn == "AC" -> MaterialTheme.colorScheme.error
         btn == "DEL" -> MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
 
-        // Equals button - Primary color
-        btn == "=" -> MaterialTheme.colorScheme.primary
+        // Equals button and RAD/DEG - Primary color
+        btn == "=" || btn == "RAD/DEG" -> MaterialTheme.colorScheme.primary
 
         // Basic operators - Secondary
         btn == "+" || btn == "-" || btn == "×" || btn == "÷" ->
